@@ -70,9 +70,7 @@ class Transformer(nn.Module):
       dropout      Tasa de dropout para regularización
     """
 
-    def __init__(
-        self, vocab_size, max_seq_len, d_model, n_heads, n_layers, expansion, dropout
-    ):
+    def __init__(self, vocab_size, max_seq_len, d_model, n_heads, n_layers, expansion, dropout):
         super().__init__()
         self.max_seq_len = max_seq_len
         self.d_model = d_model
@@ -87,10 +85,7 @@ class Transformer(nn.Module):
         # El corazón del transformer es el bloque principal, con atención y
         # feedforward, que repetimos en secuencia varias veces
         self.blocks = nn.ModuleList(
-            [
-                Block(max_seq_len, d_model, n_heads, expansion, dropout)
-                for _ in range(n_layers)
-            ]
+            [Block(max_seq_len, d_model, n_heads, expansion, dropout) for _ in range(n_layers)]
         )
         # Una última normalización final
         self.norm = nn.LayerNorm(d_model)

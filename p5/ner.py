@@ -70,13 +70,7 @@ def auto_label(tokens, vocab):
             after_punct = True  # inicio del texto = no es entidad
 
         # Entidad candidata: empieza en mayúscula, tiene más de 1 char, no es inicio de frase
-        is_entity = (
-            tok
-            and tok[0].isupper()
-            and len(tok) > 1
-            and tok.isalpha()
-            and not after_punct
-        )
+        is_entity = tok and tok[0].isupper() and len(tok) > 1 and tok.isalpha() and not after_punct
 
         if is_entity:
             if prev_entity:

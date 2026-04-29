@@ -23,16 +23,16 @@ from p5.ner import NERModel, auto_label, train_ner, extract_entities
 
 # ---- Hiperparámetros ----
 CORPUS_PATH = "alicia"
-VOCAB_SIZE   = 300
+VOCAB_SIZE = 300
 CONTEXT_SIZE = 128
-D_MODEL      = 128
-N_HEADS      = 4
-N_LAYERS     = 4
-EXPANSION    = 4
-DROPOUT      = 0.1
-EPOCHS       = 5
-BATCH_SIZE   = 64
-LR           = 3e-4
+D_MODEL = 128
+N_HEADS = 4
+N_LAYERS = 4
+EXPANSION = 4
+DROPOUT = 0.1
+EPOCHS = 5
+BATCH_SIZE = 64
+LR = 3e-4
 
 
 def main():
@@ -69,7 +69,8 @@ def main():
 
     logger.info("Entrenando LLM causal...")
     train(
-        model, tokens,
+        model,
+        tokens,
         epochs=EPOCHS,
         context_size=CONTEXT_SIZE,
         batch_size=BATCH_SIZE,
@@ -121,8 +122,11 @@ def main():
 
     # Transferimos los pesos pre-entrenados del LLM al transformer del NER
     # (solo los pesos del backbone, no la cabeza lm_head)
-    pretrained = {k: v for k, v in model.state_dict().items()
-                  if k != "lm_head.weight" and "pos_emb" not in k and "mask" not in k}
+    pretrained = {
+        k: v
+        for k, v in model.state_dict().items()
+        if k != "lm_head.weight" and "pos_emb" not in k and "mask" not in k
+    }
     ner_backbone_state = {f"transformer.{k}": v for k, v in pretrained.items()}
     missing, unexpected = ner_model.load_state_dict(ner_backbone_state, strict=False)
     logger.info(f"Pesos transferidos. Capas nuevas (a entrenar): {missing}")

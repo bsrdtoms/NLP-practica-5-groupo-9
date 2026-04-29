@@ -21,12 +21,8 @@ class CausalLLM(Transformer):
     generalización y reduce el número de parámetros.
     """
 
-    def __init__(
-        self, vocab_size, max_seq_len, d_model, n_heads, n_layers, expansion, dropout
-    ):
-        super().__init__(
-            vocab_size, max_seq_len, d_model, n_heads, n_layers, expansion, dropout
-        )
+    def __init__(self, vocab_size, max_seq_len, d_model, n_heads, n_layers, expansion, dropout):
+        super().__init__(vocab_size, max_seq_len, d_model, n_heads, n_layers, expansion, dropout)
         # Proyectamos el espacio d_model al vocabulario para predecir el
         # siguiente token
         self.lm_head = nn.Linear(d_model, vocab_size, bias=False)

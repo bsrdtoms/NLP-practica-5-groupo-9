@@ -1,0 +1,23 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "fdi-pln-2609-p5"
+version = "1.0"
+description = "TP5 PLN: LLM causal + NER sobre Alice in Wonderland"
+requires-python = ">=3.10"
+dependencies = [
+    "torch",
+    "loguru",
+    "typer>=0.25.0",
+]
+
+[project.scripts]
+fdi-pln-2609-p5 = "p5.cli:app"
+
+[tool.hatch.build.targets.wheel]
+packages = ["p5"]
+
+[tool.ruff]
+line-length = 100

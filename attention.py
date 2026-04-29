@@ -34,9 +34,7 @@ class Attention(nn.Module):
         self.dropout = nn.Dropout(dropout)
         # La máscara causal pone a -inf las posiciones correspondientes a tokens
         # "futuros" (triangular superior)
-        mask = torch.triu(
-            torch.full((max_seq_len, max_seq_len), float("-inf")), diagonal=1
-        )
+        mask = torch.triu(torch.full((max_seq_len, max_seq_len), float("-inf")), diagonal=1)
         # Registramos la máscara causal como tensor (no entrenable)
         self.register_buffer("mask", mask)
 
