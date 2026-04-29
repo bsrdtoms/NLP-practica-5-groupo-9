@@ -61,10 +61,8 @@ def _run_epoch(model, dataloader, optimizer=None):
 
     if optimizer:
         model.train()
-        torch.set_grad_enabled(True)
     else:
         model.eval()
-        torch.set_grad_enabled(False)
 
     for x, y in dataloader:
         x, y = x.to(device), y.to(device)
@@ -73,7 +71,11 @@ def _run_epoch(model, dataloader, optimizer=None):
             optimizer.zero_grad()
 
         # Pase forward, creando el grafo computacional y calculando loss
-        _, loss = model(x, y)
+        if optimizer:
+            _, loss = model(x, y)
+        else:
+            with torch.no_grad():
+                _, loss = model(x, y)
 
         if optimizer:
             # Propaga la pérdida hacia atrás siguiendo el grafo
