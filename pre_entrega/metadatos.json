@@ -1,0 +1,51 @@
+{
+  "proyecto": "TP5 PLN 2025/2026 - FDI UCM",
+  "grupo": "G09",
+  "anotadores": [
+    {
+      "id": "H1",
+      "nombre": "Heurística amplia",
+      "descripcion": "Token en mayúscula + no inicio de frase + alfabético (len >= 1, incluye iniciales)",
+      "fecha": "2026-04-29",
+      "responsable": "Thomas Bossard"
+    },
+    {
+      "id": "H2",
+      "nombre": "Heurística estricta",
+      "descripcion": "Igual que H1 + len >= 4 + frecuencia >= 2 en corpus (nombre propio recurrente)",
+      "fecha": "2026-04-29",
+      "responsable": "Thomas Bossard"
+    }
+  ],
+  "corpus": {
+    "fuente": "Alice's Adventures in Wonderland + Through the Looking-Glass (Lewis Carroll)",
+    "tokens_totales": 29263,
+    "H1": {
+      "tokens_entidad": 1089,
+      "distribucion": {
+        "O": 28174,
+        "B-ENT": 890,
+        "I-ENT": 199
+      }
+    },
+    "H2": {
+      "tokens_entidad": 58,
+      "distribucion": {
+        "O": 29205,
+        "B-ENT": 58,
+        "I-ENT": 0
+      }
+    }
+  },
+  "esquema_etiquetas": [
+    "O",
+    "B-ENT",
+    "I-ENT"
+  ],
+  "acuerdo_inter_anotador": {
+    "kappa_cohen": 0.098,
+    "interpretacion": "acuerdo débil",
+    "tokens_en_desacuerdo": 1031,
+    "porcentaje_desacuerdo": 3.52
+  }
+}
