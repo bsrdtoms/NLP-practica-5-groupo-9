@@ -79,8 +79,33 @@ uv run fdi-pln-2609-p5 ner --weights p5_ner_2609.pth --file mi_texto.txt
 | 128 | ~1.1 M |
 | 256 | ~3.5 M |
 
+## Pre-entrega: corpus anotado y kappa de Cohen
+
+El directorio `pre_entrega/` contiene el corpus etiquetado generado con dos heurísticas automáticas independientes, tratadas como dos anotadores distintos para calcular la kappa de Cohen:
+
+| Heurística | Criterio | Entidades encontradas |
+|---|---|---|
+| **H1 (amplia)** | Token en mayúscula + no inicio de frase + alfabético (len ≥ 1) | 1 089 tokens (3.7 %) |
+| **H2 (estricta)** | H1 + len ≥ 4 + frecuencia ≥ 2 en el corpus | 58 tokens (0.2 %) |
+
+**Kappa de Cohen H1 vs H2: κ = 0.098** (acuerdo débil) — refleja la diferencia real de criterios: H1 incluye letras sueltas capitalizadas (fragmentos BPE como `I`, `W`, `A`…), H2 solo acepta nombres propios recurrentes (`Alice`, `Alic`).
+
+### Relación entre la pre-entrega y el entrenamiento
+
+> **El modelo NER no usa el TSV para entrenarse.** Los labels se generan en tiempo de ejecución mediante `auto_label()` en `p5/ner.py` (heurística equivalente a H1). El archivo `corpus_etiquetado.tsv` es un entregable académico que documenta y justifica el proceso de anotación.
+
+### Contenido del zip pre-entrega
+
+```
+pre_entrega_G09.zip
+├── corpus_etiquetado.tsv     # token_id | token | etiqueta_H1 | etiqueta_H2
+├── metadatos.json            # estadísticas, distribución, kappa
+└── anotacion_NER.md          # documentación completa del proceso
+```
+
 ## Notas técnicas
 
-- El corpus es el texto completo de *Alice's Adventures in Wonderland* y *Through the Looking-Glass*.
-- El NER usa etiquetado heurístico automático (mayúsculas fuera de inicio de frase → entidad).
+- El corpus usa *Alice's Adventures in Wonderland* (Project Gutenberg, fichero 11) con mayúsculas originales preservadas.
+- El NER usa etiquetado heurístico automático (`auto_label()`): token en mayúscula fuera de inicio de frase → entidad.
 - Transfer learning: los pesos del backbone Transformer se transfieren del LLM al NER (excepto `pos_emb` y máscaras, que tienen tamaños distintos).
+- Con BPE vocab_size=300 solo emergen 2 tokens multicarácter capitalizados: `Alic` y `Alice`.
