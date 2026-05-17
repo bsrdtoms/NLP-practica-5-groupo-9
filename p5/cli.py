@@ -17,7 +17,9 @@ from loguru import logger
 app = typer.Typer(help="TP5 PLN 2025/2026 — LLM causal + NER (grupo 09)")
 
 # ---- Hiperparámetros por defecto ----
-VOCAB_SIZE = 300
+VOCAB_SIZE = 300  # vocabulario del LLM causal
+NER_VOCAB_SIZE = 1000  # vocabulario mayor para NER: captura más nombres propios
+# (Rabbit, Queen, Hatter, Caterpillar... vs solo Alice con 300)
 CONTEXT_SIZE = 128
 NER_CONTEXT = 64
 D_MODEL = 128
@@ -83,13 +85,26 @@ def train_llm(
 
 @app.command()
 def train_ner(
-    llm_weights: Path = typer.Option(..., help="Pesos del LLM pre-entrenado (.pth)"),
+    llm_weights: Path = typer.Option(
+        None, help="Pesos del LLM pre-entrenado (.pth) para transfer learning (opcional)"
+    ),
     corpus: str = typer.Option("alicia", help="Ruta al corpus"),
     out: Path = typer.Option("p5_ner_2609.pth", help="Fichero de salida para los pesos NER"),
     epochs: int = typer.Option(3),
+    ner_vocab_size: int = typer.Option(
+        NER_VOCAB_SIZE,
+        help="Tamaño de vocabulario BPE para NER (default 1000, más nombres propios que el LLM con 300)",
+    ),
 ):
-    """Entrena el modelo NER (con transfer learning del LLM) y guarda los pesos."""
-    from p5.causal_llm import CausalLLM
+    """Entrena el modelo NER y guarda los pesos.
+
+    Con ner_vocab_size=1000 (por defecto) el tokenizador BPE captura nombres propios
+    completos (Rabbit, Queen, Hatter, Caterpillar...) que con vocab=300 quedan
+    fragmentados. Esto mejora significativamente la detección de entidades.
+
+    Si se proporciona --llm-weights con el mismo vocab_size que el LLM (300),
+    se aplica transfer learning del backbone Transformer.
+    """
     from p5.corpus import load_corpus
     from p5.ner import NERModel, auto_label, train_ner as _train_ner
     from p5.tokenizer import BPETokenizer
@@ -97,23 +112,23 @@ def train_ner(
     device = "cuda" if torch.cuda.is_available() else "cpu"
     logger.info(f"Dispositivo: {device}")
 
-    # Cargar corpus y tokenizador
+    # Cargar corpus y tokenizador NER (vocab mayor para capturar nombres propios)
     text = load_corpus(corpus)
-    tokenizer = BPETokenizer(text, vocab_size=VOCAB_SIZE)
+    tokenizer = BPETokenizer(text, vocab_size=ner_vocab_size)
 
-    # Cargar pesos LLM para transferencia
-    ckpt = torch.load(llm_weights, map_location=device)
-    llm_state = ckpt["model_state"]
+    cap_tokens = [v for v in tokenizer.vocab if v and v[0].isupper() and v.isalpha() and len(v) > 1]
+    logger.info(f"Vocab NER: {ner_vocab_size} | Tokens capitalizados multichar: {len(cap_tokens)}")
 
     ner_text = text[:60_000]
     ner_tokens = tokenizer.encode(ner_text)
     ner_labels = auto_label(ner_tokens, tokenizer.vocab)
+    n_ent = sum(1 for l in ner_labels if l > 0)
     logger.info(
-        f"NER: {len(ner_tokens):,} tokens, {sum(1 for l in ner_labels if l > 0):,} entidades"
+        f"NER: {len(ner_tokens):,} tokens, {n_ent:,} tokens de entidad ({100 * n_ent / len(ner_tokens):.1f}%)"
     )
 
     ner_model = NERModel(
-        vocab_size=VOCAB_SIZE,
+        vocab_size=ner_vocab_size,
         max_seq_len=NER_CONTEXT,
         d_model=D_MODEL,
         n_heads=N_HEADS,
@@ -122,14 +137,27 @@ def train_ner(
         dropout=DROPOUT,
     ).to(device)
 
-    pretrained = {
-        k: v
-        for k, v in llm_state.items()
-        if k != "lm_head.weight" and "pos_emb" not in k and "mask" not in k
-    }
-    backbone_state = {f"transformer.{k}": v for k, v in pretrained.items()}
-    missing, _ = ner_model.load_state_dict(backbone_state, strict=False)
-    logger.info(f"Transfer learning OK. Capas nuevas: {missing}")
+    # Transfer learning opcional: solo si se dan pesos LLM con vocab compatible
+    if llm_weights is not None:
+        ckpt = torch.load(llm_weights, map_location=device)
+        llm_vocab = len(ckpt.get("vocab", []))
+        if llm_vocab == ner_vocab_size:
+            llm_state = ckpt["model_state"]
+            pretrained = {
+                k: v
+                for k, v in llm_state.items()
+                if k != "lm_head.weight" and "pos_emb" not in k and "mask" not in k
+            }
+            backbone_state = {f"transformer.{k}": v for k, v in pretrained.items()}
+            missing, _ = ner_model.load_state_dict(backbone_state, strict=False)
+            logger.info(f"Transfer learning OK. Capas nuevas: {missing}")
+        else:
+            logger.warning(
+                f"Vocab LLM ({llm_vocab}) != vocab NER ({ner_vocab_size}): "
+                "se entrena NER desde cero (sin transfer learning)."
+            )
+    else:
+        logger.info("Sin transfer learning: NER entrenado desde cero.")
 
     _train_ner(ner_model, ner_tokens, ner_labels, epochs=epochs, context_size=NER_CONTEXT)
 

@@ -2,6 +2,7 @@
 Exécuter sur le serveur Onyxia pour entraîner et sauvegarder les poids.
 Usage: python3 save_weights.py
 """
+
 import sys
 import os
 
@@ -15,7 +16,8 @@ from p5.causal_llm import CausalLLM
 from p5.causal_train import train
 from p5.ner import NERModel, auto_label, train_ner
 
-VOCAB_SIZE = 300
+VOCAB_SIZE = 300  # LLM causal
+NER_VOCAB_SIZE = 1000  # NER: vocab mayor captura Rabbit, Queen, Hatter, Caterpillar...
 CONTEXT_SIZE = 128
 NER_CONTEXT = 64
 
@@ -53,13 +55,25 @@ train(model, tokens, epochs=5, context_size=CONTEXT_SIZE, batch_size=64)
 torch.save({"model_state": model.state_dict(), **save_tok(tokenizer)}, "p5_causal_2609.pth")
 print("✓ Saved p5_causal_2609.pth")
 
-# --- Entraîner NER ---
+# --- Entraîner NER (vocab=1000 pour capturer plus de noms propres) ---
+# Con vocab=300 solo emerge "Alice" como token capitalizado multichar.
+# Con vocab=1000 emergen: Rabbit, Queen, Hatter, Caterpillar, Duchess, Gryphon...
+# El NER se entrena con su propio tokenizador (sin transfer learning, ya que
+# los tamaños de embedding difieren del LLM).
+ner_tokenizer = BPETokenizer(text, vocab_size=NER_VOCAB_SIZE)
+cap_tokens = [v for v in ner_tokenizer.vocab if v and v[0].isupper() and v.isalpha() and len(v) > 1]
+print(f"NER vocab={NER_VOCAB_SIZE} | Tokens capitalizados multichar: {len(cap_tokens)}")
+
 ner_text = text[:60_000]
-ner_tokens = tokenizer.encode(ner_text)
-ner_labels = auto_label(ner_tokens, tokenizer.vocab)
+ner_tokens = ner_tokenizer.encode(ner_text)
+ner_labels = auto_label(ner_tokens, ner_tokenizer.vocab)
+n_ent = sum(1 for l in ner_labels if l > 0)
+print(
+    f"NER: {len(ner_tokens):,} tokens, {n_ent:,} entidades ({100 * n_ent / len(ner_tokens):.1f}%)"
+)
 
 ner_model = NERModel(
-    vocab_size=VOCAB_SIZE,
+    vocab_size=NER_VOCAB_SIZE,
     max_seq_len=NER_CONTEXT,
     d_model=128,
     n_heads=4,
@@ -68,16 +82,9 @@ ner_model = NERModel(
     dropout=0.1,
 ).to(device)
 
-pretrained = {
-    k: v
-    for k, v in model.state_dict().items()
-    if k != "lm_head.weight" and "pos_emb" not in k and "mask" not in k
-}
-ner_model.load_state_dict({f"transformer.{k}": v for k, v in pretrained.items()}, strict=False)
+train_ner(ner_model, ner_tokens, ner_labels, epochs=5, context_size=NER_CONTEXT)
 
-train_ner(ner_model, ner_tokens, ner_labels, epochs=3, context_size=NER_CONTEXT)
-
-torch.save({"model_state": ner_model.state_dict(), **save_tok(tokenizer)}, "p5_ner_2609.pth")
+torch.save({"model_state": ner_model.state_dict(), **save_tok(ner_tokenizer)}, "p5_ner_2609.pth")
 print("✓ Saved p5_ner_2609.pth")
 
 # --- Upload S3 ---

@@ -71,13 +71,25 @@ uv run fdi-pln-2609-p5 ner --weights p5_ner_2609.pth --file mi_texto.txt
 | 4 | 2.72 | 3.21 |
 | 5 | 2.38 | 3.18 |
 
-### Exploración de hiperparámetros (d_model)
+### Exploración de hiperparámetros
 
-| d_model | Parámetros |
+Ver `informe_2609.html` para la exploración completa (3 experimentos: d_model, lr, n_layers).
+
+| d_model | Parámetros | Descripción |
+|---|---|---|
+| 64 | ~430 K | Infraparamétrico para este corpus |
+| 128 | ~1.1 M | **Óptimo** — mejor val_loss |
+| 256 | ~3.5 M | Sobreajuste en corpus pequeño |
+
+### NER — Vocabulario ampliado (vocab=1000)
+
+El modelo NER usa un tokenizador BPE separado con `vocab_size=1000`, que captura
+43 tokens multicarácter capitalizados vs. solo 2 con vocab=300:
+
+| vocab | Entidades reconocibles |
 |---|---|
-| 64 | ~430 K |
-| 128 | ~1.1 M |
-| 256 | ~3.5 M |
+| 300 | `Alice`, `Alic` (2 tokens) |
+| **1000** | `Alice`, `Rabbit`, `Queen`, `Hatter`, `Caterpillar`, `Duchess`, `Gryphon`, `King`… (43 tokens) |
 
 ## Pre-entrega: corpus anotado y kappa de Cohen
 
